@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <sched.h> 
 
+#define _GNU_SOURCE
 #define NUM_THREADS 3
 
 typedef struct {
@@ -17,6 +19,7 @@ typedef struct {
     int waiting_time;
     int response_time;
     int turnaround_time;
+    int execution_time;
 } ThreadInfo;
 
 pthread_mutex_t lock;
@@ -172,6 +175,18 @@ int main() {
     pthread_t scheduler_thread;
     pthread_mutex_init(&lock, NULL);
 
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) != 0) {
+        perror("sched_setaffinity failed");
+        exit(1);
+    }
+    pthread_attr_t attr;
+    pthread_attr_init(&attr); // Initialize thread attributes
+    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
+
+
     // Initialize thread info
     threads[0] = (ThreadInfo){.id = 1, .burst_time = 3, .remaining_time = 3, .release_time = 0, .response_time = -1};
     threads[1] = (ThreadInfo){.id = 2, .burst_time = 2, .remaining_time = 2, .release_time = 1, .response_time = -1};
@@ -181,9 +196,9 @@ int main() {
     pthread_create(&scheduler_thread, NULL, scheduler, NULL);
 
     // Create threads
-    pthread_create(&threads[0].thread, NULL, print_chars, &threads[0]);
-    pthread_create(&threads[1].thread, NULL, bunnyId, &threads[1]);
-    pthread_create(&threads[2].thread, NULL, printInt, &threads[2]);
+    pthread_create(&threads[0].thread, &attr, print_chars, &threads[0]);
+    pthread_create(&threads[1].thread, &attr, bunnyId, &threads[1]);
+    pthread_create(&threads[2].thread, &attr, printInt, &threads[2]);
 
     // Wait for threads
     for (int i = 0; i < NUM_THREADS; i++) {
@@ -199,13 +214,15 @@ int main() {
     printf("--------------------\n");
 
     for (int i = 0; i < NUM_THREADS; i++) {
-        threads[i].waiting_time = threads[i].start_time - threads[i].release_time;
         threads[i].turnaround_time = threads[i].finish_time - threads[i].release_time;
+        threads[i].execution_time = threads[i].finish_time - threads[i].start_time;
+        threads[i].waiting_time = threads[i].turnaround_time - threads[i].execution_time;
 
         printf("Thread %d:\n", threads[i].id);
         printf("  Release Time: %d sec\n", threads[i].release_time);
         printf("  Start Time: %d sec\n", threads[i].start_time);
         printf("  Finish Time: %d sec\n", threads[i].finish_time);
+        printf("  Execution Time: %d sec\n", threads[i].execution_time);
         printf("  Waiting Time: %d sec\n", threads[i].waiting_time);
         printf("  Response Time: %d sec\n", threads[i].response_time);
         printf("  Turnaround Time: %d sec\n", threads[i].turnaround_time);
