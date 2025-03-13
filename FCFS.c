@@ -110,7 +110,7 @@ int main() {
     finish[1] = get_time_ms() - base_time;
     exec[1] = finish[1] - start[1];
     cpu_work += exec[1];
-    response[1] = start[0] - release[0];
+    response[1] = start[1] - release[1];
     turnaround[1] = finish[1] - release[1];
     wait[1] = turnaround[1] - exec[1];
 
@@ -122,7 +122,7 @@ int main() {
     finish[2] = get_time_ms() - base_time;
     exec[2] = finish[2] - start[2];
     cpu_work += exec[2];
-    response[2] = start[0] - release[0];
+    response[2] = start[2] - release[2];
     turnaround[2] = finish[2] - release[2];
     wait[2] = turnaround[2] - exec[2];
 
